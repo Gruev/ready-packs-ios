@@ -144,7 +144,7 @@ body {
    (not a pseudo-element), ::after carries a second, mirrored copy blended
    with mix-blend-mode: exclusion for the extra angle-dependent texture. */
 .interactive-card__illusion {
-  --space: 5%;
+  --space: 50%;
   --angle: 133deg;
   --sunpillar-clr-1: hsl(0, 100%, 70%);
   --sunpillar-clr-2: hsl(50, 100%, 70%);
@@ -194,7 +194,7 @@ body {
      once on .interactive-card__foil. */
   background-repeat: repeat;
   background-size:
-    60%,
+    80%,
     200% 700%,
     300% 100%,
     200% 100%;
@@ -274,7 +274,7 @@ body {
   background-blend-mode: exclusion, hue, hard-light;
   background-repeat: repeat;
   background-size:
-    60%,
+    80%,
     200% 400%,
     195% 100%,
     200% 100%;
