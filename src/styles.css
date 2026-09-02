@@ -61,6 +61,7 @@ body {
   pointer-events: auto;
   cursor: pointer;
   outline: none;
+  -webkit-transform-style: preserve-3d;
   transform-style: preserve-3d;
   will-change: transform;
   transform: translate3d(var(--tx), var(--ty), 0) rotateX(var(--rx)) rotateY(var(--ry))
@@ -71,6 +72,7 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
+  -webkit-transform-style: preserve-3d;
   transform-style: preserve-3d;
   /* Lifts the content slightly off the shell inside the shared 3D
      context (a cheap, non-rasterized stand-in for real curvature), then
@@ -85,9 +87,11 @@ body {
   overflow: hidden;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  isolation: isolate;
 }
 
 .interactive-card__face--back {
+  -webkit-transform: rotateY(180deg);
   transform: rotateY(180deg);
 }
 
@@ -101,6 +105,8 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   opacity: var(--foil-opacity, 0);
   mask-image: var(--holo-mark-url, url('/holo-mark.png'));
   -webkit-mask-image: var(--holo-mark-url, url('/holo-mark.png'));
@@ -156,6 +162,8 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   opacity: var(--illusion-opacity, 0);
   border-radius: var(--card-radius);
   transform: translateZ(1px);
@@ -307,6 +315,8 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   opacity: var(--glare-opacity, 0);
   border-radius: var(--card-radius);
   transform: translateZ(2px);

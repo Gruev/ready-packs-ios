@@ -49,6 +49,7 @@ export class InteractiveCard {
     // Keyboard users still get a (static) card without depending on hover.
     this.el.addEventListener('focus', this._onPointerEnter);
     this.el.addEventListener('blur', this._onPointerLeave);
+    window.addEventListener('blur', this._onPointerLeave);
     // Click-to-flip is its own affordance, independent of hover.
     this.el.addEventListener('click', this._onClick);
     this.el.addEventListener('keydown', this._onKeydown);
@@ -258,5 +259,6 @@ export class InteractiveCard {
     this.el.removeEventListener('keydown', this._onKeydown);
     this.resizeObserver.disconnect();
     window.removeEventListener('resize', this._measure);
+    window.removeEventListener('blur', this._onPointerLeave);
   }
 }
