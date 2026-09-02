@@ -1,0 +1,17 @@
+{
+  "name": "grades",
+  "version": "1.0.0",
+  "description": "Interactive collectible card: tilt/parallax, click-to-flip, foil/shine/glare effects, swappable grade asset sets.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lil-gui": "^0.19.2"
+  },
+  "devDependencies": {
+    "vite": "^8.1.4"
+  }
+}

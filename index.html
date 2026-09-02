@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive Card</title>
+  </head>
+  <body>
+    <!-- Pointer tracking target for the card tilt: covers the whole scene
+         area so the card reacts to pointer movement anywhere over it, not
+         just while directly over the card itself. -->
+    <div class="card-scene">
+      <!-- Real HTML card. data-interactive-card is the stable hook
+           InteractiveCard.js and styles.css key off; the "class" below is
+           just the renameable cosmetic hook driven by config.card.className. -->
+      <div class="interactive-card-layer">
+        <div class="interactive-card" data-interactive-card tabindex="0">
+          <div class="interactive-card__content">
+            <div class="interactive-card__face interactive-card__face--front">
+              <!-- Background layer - illusion blends over this, underneath the frame. -->
+              <img class="card-image" data-card-asset="card" src="/packs/001/card.png" alt="Collectible card" draggable="false" />
+              <div class="interactive-card__illusion"></div>
+              <!-- Frame/text layer. -->
+              <img class="card-image" data-card-asset="card-front" src="/packs/001/card-front.png" alt="" draggable="false" />
+              <!-- Glare: masked shine variant, clipped to card-front-mask.png. -->
+              <div class="interactive-card__glare"></div>
+              <!-- Foil sits on top of the frame. -->
+              <div class="interactive-card__foil"></div>
+            </div>
+            <div class="interactive-card__face interactive-card__face--back">
+              <img class="card-image" data-card-asset="card-back" src="/packs/001/card-back.png" alt="Card back" draggable="false" />
+              <div class="interactive-card__illusion"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

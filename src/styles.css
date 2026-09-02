@@ -1,0 +1,481 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Pointer-move tracking target for the card tilt - covers the full scene
+   so the card reacts anywhere over it, not just directly over the card. */
+.card-scene {
+  position: fixed;
+  inset: 0;
+  pointer-events: auto;
+}
+
+/* Centers the card without fighting the tilt transform below - the card
+   itself only ever carries perspective/translate/rotate/scale, never
+   centering math. */
+.interactive-card-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  /* Perspective lives on this stable, never-transformed ancestor - not on
+     the card's own transform - so the flip (a child transform) gets a
+     real fixed vanishing point instead of one that tilts along with the
+     card and reads as flat. */
+  perspective: var(--perspective, 900px);
+}
+
+[data-interactive-card] {
+  --rx: 0deg;
+  --ry: 0deg;
+  --tx: 0px;
+  --ty: 0px;
+  --scale: 1;
+  --mouse-x: 50%;
+  --mouse-y: 50%;
+  --highlight-opacity: 0;
+  --highlight-size: 60%;
+  --foil-opacity: 0;
+  --highlight-color: #ffffff;
+  --shadow-x: 0px;
+  --shadow-y: 0px;
+  --card-radius: 24px;
+  --card-width: 284px;
+  --card-height: 421px;
+  --perspective: 900px;
+  --flip-rotation: 0deg;
+  --flip-duration: 0.6s;
+
+  position: relative;
+  width: var(--card-width);
+  height: var(--card-height);
+  box-sizing: border-box;
+  pointer-events: auto;
+  cursor: pointer;
+  outline: none;
+  transform-style: preserve-3d;
+  will-change: transform;
+  transform: translate3d(var(--tx), var(--ty), 0) rotateX(var(--rx)) rotateY(var(--ry))
+    scale(var(--scale));
+}
+
+.interactive-card__content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  /* Lifts the content slightly off the shell inside the shared 3D
+     context (a cheap, non-rasterized stand-in for real curvature), then
+     layers the click-to-flip rotation on top of that same 3D stage. */
+  transform: translateZ(20px) rotateY(var(--flip-rotation));
+  transition: transform var(--flip-duration) cubic-bezier(0.4, 0.1, 0.2, 1);
+}
+
+.interactive-card__face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.interactive-card__face--back {
+  transform: rotateY(180deg);
+}
+
+/* Foil layer: a brushed-metal/chrome specular streak (dark -> bright
+   highlight -> dark, monochrome), masked to only show through
+   holo-mark.png's shape, blended on top of the card art. A real DOM
+   element (not ::before/::after) so it lives on each face and paints
+   between the <img> and the highlight sheen. Position is driven by
+   --mouse-x/--mouse-y, the same pointer coords the highlight uses. */
+.interactive-card__foil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--foil-opacity, 0);
+  mask-image: var(--holo-mark-url, url('/holo-mark.png'));
+  -webkit-mask-image: var(--holo-mark-url, url('/holo-mark.png'));
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-position: center;
+  /* Density is controlled by the gradient's own repeat-cycle percentages,
+     not background-size - shrinking background-size on a diagonal
+     repeating-linear-gradient forces background-repeat to tile it, and
+     diagonal tiles don't line up edge-to-edge, which is exactly what
+     showed up as visible seams. First stop == last stop (both #1c1c1f)
+     so the 0%-30% cycle loops with zero tiling. */
+  background-image: repeating-linear-gradient(
+    105deg,
+    #1c1c1f 0%,
+    #56565a 6%,
+    #f5f5f5 12%,
+    #56565a 18%,
+    #1c1c1f 24%,
+    #1c1c1f 30%
+  );
+  background-size: 600% 100%;
+  background-repeat: no-repeat;
+  background-position: var(--mouse-x) var(--mouse-y);
+  mix-blend-mode: screen;
+}
+
+/* V (Full Art) shine, ported from poke-holo.simey.me's real stylesheet -
+   .card[data-rarity="rare ultra"] .card__shine / :after, using the
+   ".not(.masked)" variant since we don't have a per-card silhouette mask
+   like their real cards do (their own caveat: "the texture effect is not
+   identical to reality as the real cards each have a unique pattern that
+   follows the art" - illusion.png is their generic placeholder texture
+   too).
+
+   Structure matches their real DOM: the primary diagonal-gradient +
+   texture background sits directly on .interactive-card__illusion itself
+   (not a pseudo-element), ::after carries a second, mirrored copy blended
+   with mix-blend-mode: exclusion for the extra angle-dependent texture. */
+.interactive-card__illusion {
+  --space: 5%;
+  --angle: 133deg;
+  --sunpillar-clr-1: hsl(0, 100%, 70%);
+  --sunpillar-clr-2: hsl(50, 100%, 70%);
+  --sunpillar-clr-3: hsl(120, 100%, 70%);
+  --sunpillar-clr-4: hsl(180, 100%, 70%);
+  --sunpillar-clr-5: hsl(240, 100%, 70%);
+  --sunpillar-clr-6: hsl(300, 100%, 70%);
+
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--illusion-opacity, 0);
+  border-radius: var(--card-radius);
+  transform: translateZ(1px);
+  mix-blend-mode: color-dodge;
+  background-image: var(--illusion-url),
+    repeating-linear-gradient(
+      0deg,
+      var(--sunpillar-clr-1) calc(var(--space) * 1),
+      var(--sunpillar-clr-2) calc(var(--space) * 2),
+      var(--sunpillar-clr-3) calc(var(--space) * 3),
+      var(--sunpillar-clr-4) calc(var(--space) * 4),
+      var(--sunpillar-clr-5) calc(var(--space) * 5),
+      var(--sunpillar-clr-6) calc(var(--space) * 6),
+      var(--sunpillar-clr-1) calc(var(--space) * 7)
+    ),
+    repeating-linear-gradient(
+      var(--angle),
+      #0e152e 0%,
+      hsl(180, 10%, 60%) 3.8%,
+      hsl(180, 29%, 66%) 4.5%,
+      hsl(180, 10%, 60%) 5.2%,
+      #0e152e 10%,
+      #0e152e 12%
+    ),
+    radial-gradient(
+      farthest-corner circle at var(--mouse-x) var(--mouse-y),
+      hsla(0, 0%, 0%, 0.1) 12%,
+      hsla(0, 0%, 0%, 0.15) 20%,
+      hsla(0, 0%, 0%, 0.25) 120%
+    );
+  background-blend-mode: overlay, hue, hard-light;
+  /* no-repeat on every layer - none of these background-size values
+     leave a gap-free single tile in both axes, so the default `repeat`
+     was tiling them and the tile boundaries showed up as hard edges/cuts
+     where each gradient's cycle restarts. Same root cause already fixed
+     once on .interactive-card__foil. */
+  background-repeat: repeat;
+  background-size:
+    60%,
+    200% 700%,
+    300% 100%,
+    200% 100%;
+  /* background-position percentages are edge-alignment anchors, not raw
+     pixel offsets - they must stay within 0%-100% or the image's edge
+     pulls inside the box no matter how oversized background-size is,
+     showing as a hard seam. --shine-diag-x is pre-clamped in JS (not via
+     calc()/clamp() here - those were unreliable inside background-position
+     across engines and silently killed the pointer-follow animation). */
+  background-position:
+    center center,
+    0% var(--mouse-y),
+    var(--illusion-diag-x, 50%) var(--mouse-y),
+    var(--mouse-x) var(--mouse-y);
+  /* Was brightness(0.5) contrast(2) - crushed the illusion.png texture to
+     near-black before it ever reached the outer color-dodge blend. */
+  filter: brightness(0.75) contrast(1.6) saturate(1.5);
+}
+
+/* Bright pointer-following glare, from the reference's masked-variant
+   .card__shine:before. */
+.interactive-card__illusion::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+  transform: translateZ(1px);
+  pointer-events: none;
+  background-image: radial-gradient(
+    farthest-corner circle at var(--mouse-x) var(--mouse-y),
+    hsl(0, 0%, 100%) 0%,
+    hsla(0, 0%, 0%, 0) 40%
+  );
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  mix-blend-mode: overlay;
+  opacity: 0.75;
+}
+
+/* Second copy of the same layers, mirrored and exclusion-blended against
+   the primary layer above - the "additional background image with an
+   exclusion filter" that gives the extra angle-dependent texture. */
+.interactive-card__illusion::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+  transform: translateZ(1px);
+  pointer-events: none;
+  background-image: var(--illusion-url),
+    repeating-linear-gradient(
+      0deg,
+      var(--sunpillar-clr-1) calc(var(--space) * 1),
+      var(--sunpillar-clr-2) calc(var(--space) * 2),
+      var(--sunpillar-clr-3) calc(var(--space) * 3),
+      var(--sunpillar-clr-4) calc(var(--space) * 4),
+      var(--sunpillar-clr-5) calc(var(--space) * 5),
+      var(--sunpillar-clr-6) calc(var(--space) * 6),
+      var(--sunpillar-clr-1) calc(var(--space) * 7)
+    ),
+    repeating-linear-gradient(
+      var(--angle),
+      #0e152e 0%,
+      hsl(180, 10%, 60%) 3.8%,
+      hsl(180, 29%, 66%) 4.5%,
+      hsl(180, 10%, 60%) 5.2%,
+      #0e152e 10%,
+      #0e152e 12%
+    ),
+    radial-gradient(
+      farthest-corner circle at var(--mouse-x) var(--mouse-y),
+      hsla(0, 0%, 0%, 0.1) 12%,
+      hsla(0, 0%, 0%, 0.15) 20%,
+      hsla(0, 0%, 0%, 0.25) 120%
+    );
+  background-blend-mode: exclusion, hue, hard-light;
+  background-repeat: repeat;
+  background-size:
+    60%,
+    200% 400%,
+    195% 100%,
+    200% 100%;
+  /* Mirrored positions - --shine-diag-x-inv/--shine-mouse-y-inv are the
+     proper percentage inversion (100% - value), pre-computed and clamped
+     in JS for the same reliability reason as --shine-diag-x above. */
+  background-position:
+    center center,
+    0% var(--mouse-y),
+    var(--illusion-diag-x-inv, 50%) var(--illusion-mouse-y-inv, 50%),
+    var(--mouse-x) var(--mouse-y);
+  filter: brightness(0.9) contrast(1.6) saturate(1.4);
+  mix-blend-mode: exclusion;
+}
+
+/* Glare: identical to .interactive-card__illusion but masked to card-front-mask.png
+   (per grade). The mask is also applied explicitly to ::before/::after because
+   browsers with blend-mode stacking contexts don't reliably clip pseudo-elements
+   through the parent's mask alone. */
+.interactive-card__glare {
+  --space: 5%;
+  --angle: 133deg;
+  --sunpillar-clr-1: hsl(0, 100%, 70%);
+  --sunpillar-clr-2: hsl(50, 100%, 70%);
+  --sunpillar-clr-3: hsl(120, 100%, 70%);
+  --sunpillar-clr-4: hsl(180, 100%, 70%);
+  --sunpillar-clr-5: hsl(240, 100%, 70%);
+  --sunpillar-clr-6: hsl(300, 100%, 70%);
+
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--glare-opacity, 0);
+  border-radius: var(--card-radius);
+  transform: translateZ(2px);
+  mix-blend-mode: color-dodge;
+  mask-image: var(--glare-mask-url);
+  -webkit-mask-image: var(--glare-mask-url);
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-position: center;
+  background-image: var(--glare-pattern-url, var(--illusion-url)),
+    repeating-linear-gradient(
+      0deg,
+      var(--sunpillar-clr-1) calc(var(--space) * 1),
+      var(--sunpillar-clr-2) calc(var(--space) * 2),
+      var(--sunpillar-clr-3) calc(var(--space) * 3),
+      var(--sunpillar-clr-4) calc(var(--space) * 4),
+      var(--sunpillar-clr-5) calc(var(--space) * 5),
+      var(--sunpillar-clr-6) calc(var(--space) * 6),
+      var(--sunpillar-clr-1) calc(var(--space) * 7)
+    ),
+    repeating-linear-gradient(
+      var(--angle),
+      #0e152e 0%,
+      hsl(180, 10%, 60%) 3.8%,
+      hsl(180, 29%, 66%) 4.5%,
+      hsl(180, 10%, 60%) 5.2%,
+      #0e152e 10%,
+      #0e152e 12%
+    ),
+    radial-gradient(
+      farthest-corner circle at var(--mouse-x) var(--mouse-y),
+      hsla(0, 0%, 0%, 0.1) 12%,
+      hsla(0, 0%, 0%, 0.15) 20%,
+      hsla(0, 0%, 0%, 0.25) 120%
+    );
+  background-blend-mode: exclusion, hue, hard-light;
+  background-repeat: repeat;
+  background-size:
+    30%,
+    200% 700%,
+    300% 100%,
+    200% 100%;
+  background-position:
+    center center,
+    0% var(--mouse-y),
+    var(--illusion-diag-x, 50%) var(--mouse-y),
+    var(--mouse-x) var(--mouse-y);
+  filter: brightness(0.75) contrast(1.6) saturate(1.5);
+}
+
+.interactive-card__glare::before,
+.interactive-card__glare::after {
+  mask-image: var(--glare-mask-url);
+  -webkit-mask-image: var(--glare-mask-url);
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-position: center;
+}
+
+.interactive-card__glare::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+  transform: translateZ(1px);
+  pointer-events: none;
+  background-image: radial-gradient(
+    farthest-corner circle at var(--mouse-x) var(--mouse-y),
+    hsl(0, 0%, 100%) 0%,
+    hsla(0, 0%, 0%, 0) 40%
+  );
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  mix-blend-mode: overlay;
+  opacity: 0.75;
+}
+
+.interactive-card__glare::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+  transform: translateZ(1px);
+  pointer-events: none;
+  background-image: var(--glare-pattern-url, var(--illusion-url)),
+    repeating-linear-gradient(
+      0deg,
+      var(--sunpillar-clr-1) calc(var(--space) * 1),
+      var(--sunpillar-clr-2) calc(var(--space) * 2),
+      var(--sunpillar-clr-3) calc(var(--space) * 3),
+      var(--sunpillar-clr-4) calc(var(--space) * 4),
+      var(--sunpillar-clr-5) calc(var(--space) * 5),
+      var(--sunpillar-clr-6) calc(var(--space) * 6),
+      var(--sunpillar-clr-1) calc(var(--space) * 7)
+    ),
+    repeating-linear-gradient(
+      var(--angle),
+      #0e152e 0%,
+      hsl(180, 10%, 60%) 3.8%,
+      hsl(180, 29%, 66%) 4.5%,
+      hsl(180, 10%, 60%) 5.2%,
+      #0e152e 10%,
+      #0e152e 12%
+    ),
+    radial-gradient(
+      farthest-corner circle at var(--mouse-x) var(--mouse-y),
+      hsla(0, 0%, 0%, 0.1) 12%,
+      hsla(0, 0%, 0%, 0.15) 20%,
+      hsla(0, 0%, 0%, 0.25) 120%
+    );
+  background-blend-mode: exclusion, hue, hard-light;
+  background-repeat: repeat;
+  background-size:
+    30%,
+    200% 400%,
+    195% 100%,
+    200% 100%;
+  background-position:
+    center center,
+    0% var(--mouse-y),
+    var(--illusion-diag-x-inv, 50%) var(--illusion-mouse-y-inv, 50%),
+    var(--mouse-x) var(--mouse-y);
+  filter: brightness(0.9) contrast(1.6) saturate(1.4);
+  mix-blend-mode: exclusion;
+}
+
+/* Pointer-following highlight, driven purely by --mouse-x/--mouse-y.
+   Lives on each face (not the outer shell) so backface-visibility hides
+   it along with whichever face is currently turned away, instead of
+   floating static on top through the flip. ::after paints on top of the
+   face's own <img> since DOM children paint before generated content. */
+.interactive-card__face::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--mouse-x) var(--mouse-y),
+    var(--highlight-color) 0%,
+    transparent var(--highlight-size)
+  );
+  opacity: var(--highlight-opacity);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.card-image {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-interactive-card] {
+    transition: none;
+  }
+
+  .interactive-card__content {
+    transition: none;
+  }
+}
